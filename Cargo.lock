@@ -58,6 +58,11 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "embedded-graphics"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "embedded-hal"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -72,6 +77,7 @@ version = "0.1.0"
 dependencies = [
  "cortex-m 0.5.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m-rt 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "embedded-graphics 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic-semihosting 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "stm32f103xx-hal 0.1.0 (git+https://github.com/japaric/stm32f103xx-hal)",
 ]
@@ -209,6 +215,7 @@ dependencies = [
 "checksum cortex-m-rt 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9dea4ad5f88b4ccfba2b738ebe42f9452b80481c44aae42c594cc66cf2c5f3c0"
 "checksum cortex-m-rt-macros 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f96e6af14f78ca987ba5487592a199878a7b17ee65b60e0b4aa563fc00965f4f"
 "checksum cortex-m-semihosting 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "54d46ec4730314a01de4504328ef4ed6b2c51b63815caac4847ac9e70f88c9e5"
+"checksum embedded-graphics 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4b0e85266272ca72c80a2a76fdd24209e292e1d649b13253bee977b8653e8f45"
 "checksum embedded-hal 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "26944677e4934eb5fb4025501dc0d6cdbcf6bfabd6200fcfee2e7e8eef8c0362"
 "checksum nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "69f380b5fe9fab8c0d7a6a99cda23e2cc0463bedb2cbc3aada0813b98496ecdc"
 "checksum panic-itm 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6b571b82c62ba962d2434a8fdb66408e707536e5ff6d1aef2409606f1182bb08"

@@ -5,10 +5,15 @@ extern crate cortex_m;
 extern crate cortex_m_rt as rt;
 extern crate panic_semihosting;
 extern crate stm32f103xx_hal as hal;
+extern crate embedded_graphics;
 
 use hal::prelude::*;
 use hal::spi::{Mode, Spi, Phase::*, Polarity::*};
 use rt::{entry, exception, ExceptionFrame};
+use embedded_graphics::coord::Coord;
+use embedded_graphics::fonts::Font6x8;
+use embedded_graphics::prelude::*;
+use embedded_graphics::primitives::{Circle, Line};
 
 #[entry]
 fn main() -> ! {
@@ -72,15 +77,29 @@ fn main() -> ! {
 
         // set ram with funky data
         il3820.cmd(0x24).unwrap();
-        for y in 0..296 {
-            for x in 0..128/8 {
-                if x % 2 == 0 && y != 294 {
-                    il3820.write_data(&[0xff]).unwrap();
-                } else {
-                    il3820.write_data(&[0x00]).unwrap();
-                }
-            }
-        }
+        let mut display = Display::default();
+        display.draw(
+            Circle::new(Coord::new(64, 64), 64)
+                .with_stroke(Some(1u8.into()))
+                .into_iter(),
+        );
+        display.draw(
+            Line::new(Coord::new(64, 64), Coord::new(0, 64))
+                .with_stroke(Some(1u8.into()))
+                .into_iter(),
+        );
+        display.draw(
+            Line::new(Coord::new(64, 64), Coord::new(80, 80))
+                .with_stroke(Some(1u8.into()))
+                .into_iter(),
+        );
+        display.draw(
+            Font6x8::render_str("Hello World!")
+                .with_stroke(Some(1u8.into()))
+                .translate(Coord::new(5, 50))
+                .into_iter(),
+        );
+        il3820.write_data(&display.0).unwrap();
 
         // update full
         il3820.cmd_with_data(0x22, &[0xc4]).unwrap();
@@ -93,6 +112,30 @@ fn main() -> ! {
 
         il3820.nss.set_high();
         delay.delay_ms(1_000u16);
+    }
+}
+
+struct Display([u8; 296 * 128 / 8]);
+impl Default for Display {
+    fn default() -> Self {
+        Display([0xff; 296 * 128 / 8])
+    }
+}
+impl Drawing<u8> for Display {
+    fn draw<T>(&mut self, item_pixels: T)
+    where
+        T: Iterator<Item = Pixel<u8>>
+    {
+        for Pixel(UnsignedCoord(x, y), color) in item_pixels {
+            if x > 127 || y > 295 { continue; }
+            let cell = &mut self.0[x as usize / 8 + (y as usize) * 128 / 8];
+            let bit = 7 - x % 8;
+            if color != 0 {
+                *cell &= !(1 << bit);
+            } else {
+                *cell |= 1 << bit;
+            }
+        }
     }
 }
 
