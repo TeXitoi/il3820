@@ -54,7 +54,7 @@ fn main() -> ! {
     let mut i = 0;
     loop {
         i += 1;
-        let mut display = Display::default();
+        let mut display = DisplayRibbonLeft::default();
         display.draw(
             Circle::new(Coord::new(64, 64), 64)
                 .with_stroke(Some(1u8.into()))
@@ -73,24 +73,34 @@ fn main() -> ! {
         display.draw(
             Font6x8::render_str("Hello World!")
                 .with_stroke(Some(1u8.into()))
-                .translate(Coord::new(5, 50 + i))
+                .translate(Coord::new(5 + i, 50))
                 .into_iter(),
         );
-        if i % 10 == 9 { il3820.set_full(); }
+        if i % 20 == 9 { il3820.set_full(); }
         il3820.set_display(&mut spi, &display).unwrap();
         il3820.update(&mut spi).unwrap();
         il3820.set_partial();
+        if i > 296 { i = 0; }
         //delay.delay_ms(1_000u16);
     }
 }
 
-pub struct Display([u8; 296 * 128 / 8]);
-impl Default for Display {
+pub trait GetBuf {
+    fn get_buf(&self) -> &[u8];
+}
+
+pub struct DisplayRibbonButton([u8; 296 * 128 / 8]);
+impl Default for DisplayRibbonButton {
     fn default() -> Self {
-        Display([0xff; 296 * 128 / 8])
+        DisplayRibbonButton([0xff; 296 * 128 / 8])
     }
 }
-impl Drawing<u8> for Display {
+impl GetBuf for DisplayRibbonButton {
+    fn get_buf(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl Drawing<u8> for DisplayRibbonButton {
     fn draw<T>(&mut self, item_pixels: T)
     where
         T: Iterator<Item = Pixel<u8>>
@@ -99,6 +109,35 @@ impl Drawing<u8> for Display {
             if x > 127 || y > 295 { continue; }
             let cell = &mut self.0[x as usize / 8 + (y as usize) * 128 / 8];
             let bit = 7 - x % 8;
+            if color != 0 {
+                *cell &= !(1 << bit);
+            } else {
+                *cell |= 1 << bit;
+            }
+        }
+    }
+}
+
+pub struct DisplayRibbonLeft([u8; 296 * 128 / 8]);
+impl Default for DisplayRibbonLeft {
+    fn default() -> Self {
+        DisplayRibbonLeft([0xff; 296 * 128 / 8])
+    }
+}
+impl GetBuf for DisplayRibbonLeft {
+    fn get_buf(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl Drawing<u8> for DisplayRibbonLeft {
+    fn draw<T>(&mut self, item_pixels: T)
+    where
+        T: Iterator<Item = Pixel<u8>>
+    {
+        for Pixel(UnsignedCoord(x, y), color) in item_pixels {
+            if y > 127 || x > 295 { continue; }
+            let cell = &mut self.0[y as usize / 8 + (295 - x as usize) * 128 / 8];
+            let bit = 7 - y % 8;
             if color != 0 {
                 *cell &= !(1 << bit);
             } else {
@@ -196,9 +235,9 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         }
         Ok(())
     }
-    pub fn set_display(&mut self, spi: &mut S, display: &Display) -> Result<(), S::Error> {
+    pub fn set_display<DISPLAY: GetBuf>(&mut self, spi: &mut S, display: &DISPLAY) -> Result<(), S::Error> {
         if !self.is_inited { self.init(spi)?; }
-        self.cmd_with_data(spi, 0x24, &display.0)
+        self.cmd_with_data(spi, 0x24, display.get_buf())
     }
     pub fn update(&mut self, spi: &mut S) -> Result<(), S::Error> {
         if !self.is_inited { self.init(spi)?; }
