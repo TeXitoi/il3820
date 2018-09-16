@@ -3,13 +3,13 @@
 extern crate embedded_graphics;
 extern crate embedded_hal;
 
-use embedded_graphics::prelude::*;
 use core::marker::PhantomData;
+use embedded_graphics::prelude::*;
 use embedded_hal::spi;
 
 pub const MODE: spi::Mode = spi::Mode {
     polarity: spi::Polarity::IdleLow,
-    phase: spi::Phase::CaptureOnFirstTransition
+    phase: spi::Phase::CaptureOnFirstTransition,
 };
 
 pub trait GetBuf {
@@ -30,10 +30,12 @@ impl GetBuf for DisplayRibbonButton {
 impl Drawing<u8> for DisplayRibbonButton {
     fn draw<T>(&mut self, item_pixels: T)
     where
-        T: Iterator<Item = Pixel<u8>>
+        T: Iterator<Item = Pixel<u8>>,
     {
         for Pixel(UnsignedCoord(x, y), color) in item_pixels {
-            if x > 127 || y > 295 { continue; }
+            if x > 127 || y > 295 {
+                continue;
+            }
             let cell = &mut self.0[x as usize / 8 + (y as usize) * 128 / 8];
             let bit = 7 - x % 8;
             if color != 0 {
@@ -59,10 +61,12 @@ impl GetBuf for DisplayRibbonLeft {
 impl Drawing<u8> for DisplayRibbonLeft {
     fn draw<T>(&mut self, item_pixels: T)
     where
-        T: Iterator<Item = Pixel<u8>>
+        T: Iterator<Item = Pixel<u8>>,
     {
         for Pixel(UnsignedCoord(x, y), color) in item_pixels {
-            if y > 127 || x > 295 { continue; }
+            if y > 127 || x > 295 {
+                continue;
+            }
             let cell = &mut self.0[y as usize / 8 + (295 - x as usize) * 128 / 8];
             let bit = 7 - y % 8;
             if color != 0 {
@@ -75,18 +79,13 @@ impl Drawing<u8> for DisplayRibbonLeft {
 }
 
 static LUT_FULL: [u8; 30] = [
-    0x50, 0xAA, 0x55, 0xAA, 0x11, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x1F, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00    
+    0x50, 0xAA, 0x55, 0xAA, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 static LUT_PART: [u8; 30] = [
-    0x10, 0x18, 0x18, 0x08, 0x18, 0x18, 0x08, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x13, 0x14, 0x44, 0x12,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    0x10, 0x18, 0x18, 0x08, 0x18, 0x18, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x13, 0x14, 0x44, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
-
 
 pub struct Il3820<S, N, D, R, B> {
     _spi: PhantomData<S>,
@@ -98,7 +97,7 @@ pub struct Il3820<S, N, D, R, B> {
     is_inited: bool,
 }
 impl<S, N, D, R, B> Il3820<S, N, D, R, B>
-    where
+where
     S: embedded_hal::blocking::spi::Write<u8>,
     N: embedded_hal::digital::OutputPin,
     D: embedded_hal::digital::OutputPin,
@@ -111,7 +110,7 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         dc: D,
         rst: R,
         busy: B,
-        delay: &mut DELAY
+        delay: &mut DELAY,
     ) -> Self {
         let mut res = Self {
             _spi: PhantomData::default(),
@@ -125,10 +124,7 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         res.reset(delay);
         res
     }
-    pub fn reset<DELAY: embedded_hal::blocking::delay::DelayMs<u8>>(
-        &mut self,
-        delay: &mut DELAY
-    ) {
+    pub fn reset<DELAY: embedded_hal::blocking::delay::DelayMs<u8>>(&mut self, delay: &mut DELAY) {
         self.rst.set_low();
         delay.delay_ms(1u8);
         self.rst.set_high();
@@ -150,7 +146,9 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         let partial = self.partial;
         self.partial = false;
         self.init(spi)?;
-        if !self.is_inited { self.init(spi)?; }
+        if !self.is_inited {
+            self.init(spi)?;
+        }
         self.cmd(spi, 0x24)?;
         for _ in 0..128 / 8 * 296 {
             self.write_data(spi, &[0xFF])?;
@@ -162,12 +160,20 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         }
         Ok(())
     }
-    pub fn set_display<DISPLAY: GetBuf>(&mut self, spi: &mut S, display: &DISPLAY) -> Result<(), S::Error> {
-        if !self.is_inited { self.init(spi)?; }
+    pub fn set_display<DISPLAY: GetBuf>(
+        &mut self,
+        spi: &mut S,
+        display: &DISPLAY,
+    ) -> Result<(), S::Error> {
+        if !self.is_inited {
+            self.init(spi)?;
+        }
         self.cmd_with_data(spi, 0x24, display.get_buf())
     }
     pub fn update(&mut self, spi: &mut S) -> Result<(), S::Error> {
-        if !self.is_inited { self.init(spi)?; }
+        if !self.is_inited {
+            self.init(spi)?;
+        }
         self.cmd_with_data(spi, 0x22, &[0xc4])?;
         self.cmd(spi, 0x20)?;
         self.cmd(spi, 0xff)
@@ -179,20 +185,20 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         Ok(())
     }
     fn init(&mut self, spi: &mut S) -> Result<(), S::Error> {
-        self.cmd_with_data(spi, 0x01, &[0x27, 0x01, 0x00])?;//GDOControl (screen width)
-        self.cmd_with_data(spi, 0x0c, &[0xd7, 0xd6, 0x9d])?;// softstart
-        self.cmd_with_data(spi, 0x2c, &[0xa8])?;//VCOMVol
-        self.cmd_with_data(spi, 0x3a, &[0x1a])?;//dummy line
-        self.cmd_with_data(spi, 0x3b, &[0x08])?;//Gate Time
-        self.cmd_with_data(spi, 0x11, &[3])?;//ram data entry mode
+        self.cmd_with_data(spi, 0x01, &[0x27, 0x01, 0x00])?; //GDOControl (screen width)
+        self.cmd_with_data(spi, 0x0c, &[0xd7, 0xd6, 0x9d])?; // softstart
+        self.cmd_with_data(spi, 0x2c, &[0xa8])?; //VCOMVol
+        self.cmd_with_data(spi, 0x3a, &[0x1a])?; //dummy line
+        self.cmd_with_data(spi, 0x3b, &[0x08])?; //Gate Time
+        self.cmd_with_data(spi, 0x11, &[3])?; //ram data entry mode
 
         // set ram area
-        self.cmd_with_data(spi, 0x44, &[0, 127 / 8])?;// x
-        self.cmd_with_data(spi, 0x45, &[0, 0, 39, 1])?;// y
+        self.cmd_with_data(spi, 0x44, &[0, 127 / 8])?; // x
+        self.cmd_with_data(spi, 0x45, &[0, 0, 39, 1])?; // y
 
         // set ram ptr
-        self.cmd_with_data(spi, 0x4e, &[0])?;// x
-        self.cmd_with_data(spi, 0x4f, &[0, 0])?;// y
+        self.cmd_with_data(spi, 0x4e, &[0])?; // x
+        self.cmd_with_data(spi, 0x4f, &[0, 0])?; // y
 
         if self.partial {
             self.cmd_with_data(spi, 0x32, &LUT_PART)?;

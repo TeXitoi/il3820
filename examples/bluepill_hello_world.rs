@@ -3,22 +3,24 @@
 
 extern crate cortex_m;
 extern crate cortex_m_rt as rt;
-extern crate panic_semihosting;
-extern crate stm32f103xx_hal as hal;
 extern crate embedded_graphics;
 extern crate embedded_hal;
 extern crate il3820;
+extern crate panic_semihosting;
+extern crate stm32f103xx_hal as hal;
 
-use hal::prelude::*;
-use hal::spi::Spi;
-use rt::{entry, exception, ExceptionFrame};
 use embedded_graphics::coord::Coord;
 use embedded_graphics::fonts::Font6x8;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line};
+use hal::prelude::*;
+use hal::spi::Spi;
+use rt::{entry, exception, ExceptionFrame};
 
 #[entry]
-fn entry() -> ! { main() }
+fn entry() -> ! {
+    main()
+}
 fn main() -> ! {
     let dp = hal::stm32f103xx::Peripherals::take().unwrap();
     let cp = cortex_m::Peripherals::take().unwrap();
@@ -40,7 +42,7 @@ fn main() -> ! {
         clocks,
         &mut rcc.apb1,
     );
-    
+
     let mut il3820 = il3820::Il3820::new(
         &mut spi,
         gpiob.pb12.into_push_pull_output(&mut gpiob.crh),
@@ -76,11 +78,15 @@ fn main() -> ! {
                 .translate(Coord::new(5 + i, 50))
                 .into_iter(),
         );
-        if i % 20 == 9 { il3820.set_full(); }
+        if i % 20 == 9 {
+            il3820.set_full();
+        }
         il3820.set_display(&mut spi, &display).unwrap();
         il3820.update(&mut spi).unwrap();
         il3820.set_partial();
-        if i > 296 { i = 0; }
+        if i > 296 {
+            i = 0;
+        }
         //delay.delay_ms(1_000u16);
     }
 }
