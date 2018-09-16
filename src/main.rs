@@ -7,6 +7,7 @@ extern crate panic_semihosting;
 extern crate stm32f103xx_hal as hal;
 extern crate embedded_graphics;
 extern crate embedded_hal;
+extern crate heapless;
 
 use hal::prelude::*;
 use hal::spi::{Mode, Spi, Phase::*, Polarity::*};
@@ -16,8 +17,11 @@ use embedded_graphics::fonts::Font6x8;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line};
 use core::marker::PhantomData;
+use heapless::{String, consts::*};
+use core::fmt::Write;
 
 #[entry]
+fn entry() -> ! { main() }
 fn main() -> ! {
     let dp = hal::stm32f103xx::Peripherals::take().unwrap();
     let cp = cortex_m::Peripherals::take().unwrap();
@@ -49,7 +53,16 @@ fn main() -> ! {
         &mut delay,
     ).unwrap();
 
+    let mut i = 0;
     loop {
+        i += 1;
+        let mut s = String::<U16>::new();
+        //write!(s, "Hello world {}", i).unwrap();
+        if i%2 == 0 {
+            s.push_str("0").unwrap();
+        } else {
+            s.push_str("1").unwrap();
+        }
         let mut display = Display::default();
         display.draw(
             Circle::new(Coord::new(64, 64), 64)
@@ -67,11 +80,12 @@ fn main() -> ! {
                 .into_iter(),
         );
         display.draw(
-            Font6x8::render_str("Hello World!")
+            Font6x8::render_str(&s)
                 .with_stroke(Some(1u8.into()))
                 .translate(Coord::new(5, 50))
                 .into_iter(),
         );
+        il3820.set_display(&mut spi, &display).unwrap();
         il3820.set_display(&mut spi, &display).unwrap();
         il3820.update(&mut spi).unwrap();
 
@@ -104,10 +118,16 @@ impl Drawing<u8> for Display {
 }
 
 static LUT_FULL: [u8; 30] = [
-    0x02, 0x02, 0x01, 0x11, 0x12, 0x12, 0x22, 0x22, 
-    0x66, 0x69, 0x69, 0x59, 0x58, 0x99, 0x99, 0x88, 
-    0x00, 0x00, 0x00, 0x00, 0xF8, 0xB4, 0x13, 0x51, 
-    0x35, 0x51, 0x51, 0x19, 0x01, 0x00
+    0x50, 0xAA, 0x55, 0xAA, 0x11, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x1F, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00    
+];
+static LUT_PART: [u8; 30] = [
+    0x10, 0x18, 0x18, 0x08, 0x18, 0x18, 0x08, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x13, 0x14, 0x44, 0x12,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 ];
 
 
@@ -117,6 +137,7 @@ pub struct Il3820<S, N, D, R, B> {
     dc: D,
     rst: R,
     busy: B,
+    full: bool,
 }
 impl<S, N, D, R, B> Il3820<S, N, D, R, B>
     where
@@ -140,6 +161,7 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
             dc,
             rst,
             busy,
+            full: true,
         };
 
         // reset
@@ -153,7 +175,12 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         res.cmd_with_data(spi, 0x2C, &[0xA8])?;//VCOMVol
         res.cmd_with_data(spi, 0x3a, &[0x1a])?;//dummy line
         res.cmd_with_data(spi, 0x3b, &[0x08])?;//Gate Time
-        res.cmd_with_data(spi, 0x32, &LUT_FULL)?;// set LUT
+
+        if res.full {
+            res.cmd_with_data(spi, 0x32, &LUT_FULL)?;// set LUT
+        } else {
+            res.cmd_with_data(spi, 0x32, &LUT_PART)?;// set LUT
+        }
 
         // power on
         res.cmd_with_data(spi, 0x22, &[0xc3])?;
@@ -176,7 +203,11 @@ impl<S, N, D, R, B> Il3820<S, N, D, R, B>
         self.cmd_with_data(spi, 0x24, &display.0)
     }
     pub fn update(&mut self, spi: &mut S) -> Result<(), S::Error> {
-        self.cmd_with_data(spi, 0x22, &[0xc4])?;
+        if self.full {
+            self.cmd_with_data(spi, 0x22, &[0xc4])?;// full
+        } else {
+            self.cmd_with_data(spi, 0x22, &[0x04])?;// partial
+        }
         self.cmd(spi, 0x20)?;
         self.cmd(spi, 0xff)
     }
