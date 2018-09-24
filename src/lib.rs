@@ -175,14 +175,16 @@ where
             self.init(spi)?;
         }
         self.cmd_with_data(spi, 0x22, &[0xc4])?;
-        self.cmd(spi, 0x20)?;
-        self.cmd(spi, 0xff)
+        self.cmd(spi, 0x20)
     }
     pub fn power_off(&mut self, spi: &mut S) -> Result<(), S::Error> {
         self.cmd_with_data(spi, 0x22, &[0xc3])?;
         self.cmd(spi, 0x20)?;
         self.is_inited = false;
         Ok(())
+    }
+    pub fn is_busy(&self) -> bool {
+        self.busy.is_high()
     }
     fn init(&mut self, spi: &mut S) -> Result<(), S::Error> {
         self.cmd_with_data(spi, 0x01, &[0x27, 0x01, 0x00])?; //GDOControl (screen width)
@@ -216,8 +218,8 @@ where
     }
     fn cmd(&mut self, spi: &mut S, c: u8) -> Result<(), S::Error> {
         self.nss.set_low();
-        while self.busy.is_high() {}
         self.dc.set_low();
+        while self.is_busy() {}
         spi.write(&[c])?;
         self.nss.set_high();
         Ok(())

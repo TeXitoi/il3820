@@ -87,7 +87,7 @@ fn main() -> ! {
         if i > 296 {
             i = 0;
         }
-        //delay.delay_ms(1_000u16);
+        delay.delay_ms(1_000u16);
     }
 }
 
